@@ -1,3 +1,26 @@
+//Lev Blankfeld
+//
+//Les2265@mail.ru
+//
+// breakout.c
+//
+// Computer Science 50
+// Problem Set 3
+//
+
+// standard libraries
+#define _XOPEN_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+// Stanford Portable Library
+#include <spl/gevents.h>
+#include <spl/gobjects.h>
+#include <spl/gwindow.h>
+
+// height and width of game's window in pixels
 #define _XOPEN_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,17 +42,6 @@
 // number of columns of bricks
 #define COLS 10
 
-// height and width of paddle
-#define P_HEIGHT 15
-#define P_WIDTH 60
-
-/// height and width of brick
-#define B_HEIGHT 10
-#define B_WIDTH ( (WIDTH/10) - 5 )
-
-// vertical placement of paddle
-#define P_Y 500
-
 // radius of ball in pixels
 #define RADIUS 10
 
@@ -43,8 +55,6 @@ GRect initPaddle(GWindow window);
 GLabel initScoreboard(GWindow window);
 void updateScoreboard(GWindow window, GLabel label, int points);
 GObject detectCollision(GWindow window, GOval ball);
-GObject detectEdge(GWindow window, GOval ball);
-//void removeGWindow(GWindow gw, GObject gobj);
 
 int main(void)
 {
@@ -75,36 +85,57 @@ int main(void)
     // number of points initially
     int points = 0;
     
-    // ball's initial velocity
-    double x_velocity = drand48();
+    //ball velocity
+    double x_velocity = drand48() * 2;
     double y_velocity = 2.0;
 
     // keep playing until game over
     while (lives > 0 && bricks > 0)
-    {        
-        // bounce if ball hits top
-        if (getY(ball) <= 0)
+    {
+        // TODO
+        //makes the ball move
+        
+        move(ball, x_velocity, y_velocity);
+        pause(5);
+        //bounce if ball hits left or right edge
+        if (getX(ball) + getWidth(ball) >= getWidth(window))
+        {
+            x_velocity = -x_velocity;
+        }
+        else if(getX(ball) <= 0)
+        {
+            x_velocity = -x_velocity;
+        }
+        else if(getY(ball) <= 0)
         {
             y_velocity = -y_velocity;
         }
-        
-        // bounce if ball hits left or right edge
-        if(getX(ball) + getWidth(ball) >= getWidth(window))
+        //if ball hits bottom stop round and minus 1 life
+        else if(getY(ball) + getWidth(ball) >= getHeight(window))
         {
-            x_velocity = -x_velocity;
-        }
-        else if (getX(ball) <= 0)
-        {
-            x_velocity = -x_velocity;
-        }
-        
-        // detect collision
-        if (detectCollision(window,ball)!=NULL)
-        {           
-            GObject collision = detectCollision(window, ball);
+            lives--;
+            double x = WIDTH / 2 - RADIUS;
+            double y = HEIGHT / 2 - RADIUS;
+            setLocation(ball, x, y);
+            waitForClick();
+            move(ball, x_velocity, y_velocity);
+            pause(5);
             
+        }
+        
+        //detect collision
+        if (detectCollision(window, ball) != NULL)
+        {
+            GObject collision = detectCollision(window, ball);
             if (strcmp(getType(collision), "GRect") == 0)
-            {          
+            {
+                //detect if collision with paddle
+                if (collision == paddle)
+                {
+                    //x_velocity = drand48();
+                    y_velocity = -y_velocity;
+                }
+                //detect if collision with bricks
                 if (collision != paddle)
                 {
                     removeGWindow(window, collision);
@@ -114,49 +145,32 @@ int main(void)
                     //x_velocity = drand48();
                     y_velocity = -y_velocity;
                 }
-                
-                if (collision == paddle)
-                {
-                   // x_velocity = drand48();
-                    y_velocity = -y_velocity;
-                }           
-            }     
-            
-            if (strcmp(getType(collision), "GLabel") == 0)
-            {
-                
-            }         
-        } 
-        
-        // pause if ball hits bottom
-        if(getY(ball) + getHeight(ball) >= getHeight(window))
-        {
-            lives--;         
-            waitForClick();
-            y_velocity = -y_velocity;
+            }
         }
         
-        // make the ball move
-        move(ball, x_velocity, y_velocity);
-        pause(5);
-             
-        // move the paddle horizontally with the x axis
-        // check for mouse event
+        //makes the paddle sense for mouse movement
         GEvent event = getNextEvent(MOUSE_EVENT);
-
-        // if we heard one
         if (event != NULL)
         {
             // if the event was movement
             if (getEventType(event) == MOUSE_MOVED)
             {
-                // ensure paddle follows top cursor
+                //makes the paddle follow the cursor
                 double x = getX(event) - getWidth(paddle) / 2;
-                setLocation(paddle, x, P_Y);
+                setLocation(paddle, x, 500);
+                //makes the padlle stop when it hits the edge 
+                if (getX(event) + getWidth(paddle) / 2 >= getWidth(window))
+                {
+                    setLocation(paddle, WIDTH - 80, 500);
+                }
+                else if (getX(event) - getWidth(paddle) / 2 <= 0)
+                {
+                    setLocation(paddle, 0, 500);
+                }
             }
         }        
     }
-    
+
     // wait for click before exiting
     waitForClick();
 
@@ -170,35 +184,76 @@ int main(void)
  */
 void initBricks(GWindow window)
 {
+    // TODO
+    //locating the first line of bricks
     int x = 2;
-    int y = 5;
+    int y = 50;
+    
     for (int i = 1; i <= ROWS; i++)
     {
         for (int j = 1; j <= COLS; j++)
         {
-            GRect brick = newGRect(x, y, B_WIDTH, B_HEIGHT);
-            setFilled(brick, true);
-            setColor(brick, "RED");
-            add(window, brick);
-            x+=(B_WIDTH + 5);
+            //setting the color for every line of bricks
+            if (i <= ROWS -4)
+            {
+                GRect brick = newGRect(x, y, 35, 10);
+                setFilled(brick, true);
+                setColor(brick, "RED");
+                add(window, brick);
+                x += (35 + 5);
+            }
+            else if (i <= ROWS - 3)
+            {
+                GRect brick = newGRect(x, y, 35, 10);
+                setFilled(brick, true);
+                setColor(brick, "ORANGE");
+                add(window, brick);
+                x += (35 + 5);
+            }
+            else if (i <= ROWS - 2)
+            {
+                GRect brick = newGRect(x, y, 35, 10);
+                setFilled(brick, true);
+                setColor(brick, "YELLOW");
+                add(window, brick);
+                x += (35 + 5);
+            }
+            else if (i <= ROWS - 1)
+            {
+                GRect brick = newGRect(x, y, 35, 10);
+                setFilled(brick, true);
+                setColor(brick, "GREEN");
+                add(window, brick);
+                x += (35 + 5);
+            }
+            else if (i <= ROWS)
+            {
+                GRect brick = newGRect(x, y, 35, 10);
+                setFilled(brick, true);
+                setColor(brick, "BLUE");
+                add(window, brick);
+                x += (35 + 5);
+            }
         }
-        x = 2;
-        y+=(B_HEIGHT + 5);
-    }   
+       //setting location for other lines of bricks
+       x = 2;
+       y += (10 + 5);
+    }
 }
 
 /**
  * Instantiates ball in center of window.  Returns ball.
  */
 GOval initBall(GWindow window)
-{ 
-    // instantiate circle
-    GOval ball = newGOval((WIDTH/2 - RADIUS), (HEIGHT/2 - RADIUS), 2*RADIUS, 2*RADIUS);
+{
+    // TODO
+    GOval ball = newGOval((WIDTH/2 - RADIUS), (HEIGHT/2 - RADIUS), 2 * RADIUS, 2 * RADIUS);
     setFilled(ball, true);
     setColor(ball, "BLACK"); 
     add(window, ball);
     
     return ball;
+    
 }
 
 /**
@@ -206,12 +261,14 @@ GOval initBall(GWindow window)
  */
 GRect initPaddle(GWindow window)
 {
-    GRect paddle = newGRect(WIDTH/2 - .5*P_WIDTH, P_Y, P_WIDTH, P_HEIGHT);
+    // TODO
+    GRect paddle = newGRect(WIDTH/2 - 40, 500, 80, 10);
     setFilled(paddle, true);
     setColor(paddle, "BLACK");
     add(window, paddle);
     
     return paddle;
+    
 }
 
 /**
@@ -219,16 +276,14 @@ GRect initPaddle(GWindow window)
  */
 GLabel initScoreboard(GWindow window)
 {
-    
+    // TODO
     GLabel label = newGLabel("0");
     setFont(label, "SansSerif-18");
     double x = (getWidth(window) - getWidth(label)) / 2;
     double y = (getHeight(window) + getFontAscent(label)) / 2;
     setLocation(label, x, y);
     add(window, label);
-    
     return label;
-   // return NULL;
 }
 
 /**
@@ -289,7 +344,6 @@ GObject detectCollision(GWindow window, GOval ball)
     {
         return object;
     }
-    
 
     // no collision
     return NULL;
